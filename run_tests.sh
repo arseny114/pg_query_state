@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 #
-# Copyright (c) 2019-2024, Postgres Professional
+# Copyright (c) 2019-2025, Postgres Professional
 #
 # supported levels:
 #		* standard
@@ -12,6 +12,9 @@
 
 set -ux
 status=0
+
+venv_path=tmp/env
+rm -rf "$venv_path"
 
 # global exports
 export PGPORT=55435
@@ -148,13 +151,14 @@ if [ -f regression.diffs ]; then cat regression.diffs; fi
 
 # run python tests
 set +x -e
-python3 -m venv /tmp/env && source /tmp/env/bin/activate &&
-pip install -r ./tests/requirements.txt
+python3 -m venv "$venv_path" && source "$venv_path/bin/activate"
+pip3 install --upgrade -t "$venv_path" -r ./tests/requirements.txt
+#pip3 install -e "./$venv_path"
 set -e #exit virtualenv with error code
-python tests/pg_qs_test_runner.py --port $PGPORT
+python3 tests/pg_qs_test_runner.py --port $PGPORT
 if [[ "$USE_TPCDS" == "1" ]]; then
-	python tests/pg_qs_test_runner.py --port $PGPORT --tpc-ds-setup
-	python tests/pg_qs_test_runner.py --port $PGPORT --tpc-ds-run
+	python3 tests/pg_qs_test_runner.py --port $PGPORT --tpc-ds-setup
+	python3 tests/pg_qs_test_runner.py --port $PGPORT --tpc-ds-run
 fi
 deactivate
 set -x
@@ -179,4 +183,5 @@ gcov $CUSTOM_PG_SRC/contrib/pg_query_state/*.c $CUSTOM_PG_SRC/contrib/pg_query_s
 set +ux
 
 # send coverage stats to Codecov
+export CODECOV_TOKEN=55ab7421-9277-45af-a329-d8b40db96b2a
 bash <(curl -s https://codecov.io/bash)

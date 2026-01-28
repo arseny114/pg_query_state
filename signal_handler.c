@@ -2,7 +2,7 @@
  * signal_handler.c
  *		Collect current query state and send it to requestor in custom signal handler
  *
- * Copyright (c) 2016-2024, Postgres Professional
+ * Copyright (c) 2016-2025, Postgres Professional
  *
  * IDENTIFICATION
  *	  contrib/pg_query_state/signal_handler.c
@@ -11,6 +11,10 @@
 #include "pg_query_state.h"
 
 #include "commands/explain.h"
+#if PG_VERSION_NUM >= 180000
+#include "commands/explain_state.h"
+#include "commands/explain_format.h"
+#endif
 #include "miscadmin.h"
 #if PG_VERSION_NUM >= 100000
 #include "pgstat.h"

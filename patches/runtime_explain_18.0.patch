@@ -1,11 +1,21 @@
 diff --git a/src/backend/commands/explain.c b/src/backend/commands/explain.c
-index 6c2e5c8a4f..74be3944d1 100644
+index 7e2792ead71..1290f543fee 100644
 --- a/src/backend/commands/explain.c
 +++ b/src/backend/commands/explain.c
-@@ -1023,14 +1023,36 @@ report_triggers(ResultRelInfo *rInfo, bool show_relname, ExplainState *es)
+@@ -22,6 +22,7 @@
+ #include "commands/explain_format.h"
+ #include "commands/explain_state.h"
+ #include "commands/prepare.h"
++#include "executor/nodeHash.h"
+ #include "foreign/fdwapi.h"
+ #include "jit/jit.h"
+ #include "libpq/pqformat.h"
+@@ -1102,14 +1103,36 @@ report_triggers(ResultRelInfo *rInfo, bool show_relname, ExplainState *es)
  		char	   *relname;
  		char	   *conname = NULL;
  
+-		/* Must clean up instrumentation state */
+-		InstrEndLoop(instr);
 +		instr_time	starttimespan;
 +		double		total;
 +		double		ntuples;
@@ -13,8 +23,8 @@ index 6c2e5c8a4f..74be3944d1 100644
 +
 +		if (!es->runtime)
 +		{
- 		/* Must clean up instrumentation state */
- 		InstrEndLoop(instr);
++			/* Must clean up instrumentation state */
++			InstrEndLoop(instr);
 +		}
 +
 +		/* Collect statistic variables */
@@ -40,7 +50,7 @@ index 6c2e5c8a4f..74be3944d1 100644
  			continue;
  
  		ExplainOpenGroup("Trigger", NULL, true, es);
-@@ -1056,9 +1078,9 @@ report_triggers(ResultRelInfo *rInfo, bool show_relname, ExplainState *es)
+@@ -1135,9 +1158,9 @@ report_triggers(ResultRelInfo *rInfo, bool show_relname, ExplainState *es)
  				appendStringInfo(es->str, " on %s", relname);
  			if (es->timing)
  				appendStringInfo(es->str, ": time=%.3f calls=%.0f\n",
@@ -52,7 +62,7 @@ index 6c2e5c8a4f..74be3944d1 100644
  		}
  		else
  		{
-@@ -1067,9 +1089,8 @@ report_triggers(ResultRelInfo *rInfo, bool show_relname, ExplainState *es)
+@@ -1146,9 +1169,8 @@ report_triggers(ResultRelInfo *rInfo, bool show_relname, ExplainState *es)
  				ExplainPropertyText("Constraint Name", conname, es);
  			ExplainPropertyText("Relation", relname, es);
  			if (es->timing)
@@ -64,7 +74,7 @@ index 6c2e5c8a4f..74be3944d1 100644
  		}
  
  		if (conname)
-@@ -1645,8 +1666,11 @@ ExplainNode(PlanState *planstate, List *ancestors,
+@@ -1822,8 +1844,11 @@ ExplainNode(PlanState *planstate, List *ancestors,
  	 * instrumentation results the user didn't ask for.  But we do the
  	 * InstrEndLoop call anyway, if possible, to reduce the number of cases
  	 * auto_explain has to contend with.
@@ -77,7 +87,7 @@ index 6c2e5c8a4f..74be3944d1 100644
  		InstrEndLoop(planstate->instrument);
  
  	if (es->analyze &&
-@@ -1681,7 +1705,7 @@ ExplainNode(PlanState *planstate, List *ancestors,
+@@ -1856,7 +1881,7 @@ ExplainNode(PlanState *planstate, List *ancestors,
  			ExplainPropertyFloat("Actual Loops", NULL, nloops, 0, es);
  		}
  	}
@@ -86,7 +96,7 @@ index 6c2e5c8a4f..74be3944d1 100644
  	{
  		if (es->format == EXPLAIN_FORMAT_TEXT)
  			appendStringInfoString(es->str, " (never executed)");
-@@ -1697,6 +1721,75 @@ ExplainNode(PlanState *planstate, List *ancestors,
+@@ -1872,6 +1897,75 @@ ExplainNode(PlanState *planstate, List *ancestors,
  		}
  	}
  
@@ -162,7 +172,7 @@ index 6c2e5c8a4f..74be3944d1 100644
  	/* in text format, first line ends here */
  	if (es->format == EXPLAIN_FORMAT_TEXT)
  		appendStringInfoChar(es->str, '\n');
-@@ -2104,6 +2197,9 @@ ExplainNode(PlanState *planstate, List *ancestors,
+@@ -2289,6 +2383,9 @@ ExplainNode(PlanState *planstate, List *ancestors,
  
  	/* Prepare per-worker buffer/WAL usage */
  	if (es->workers_state && (es->buffers || es->wal) && es->verbose)
@@ -172,7 +182,7 @@ index 6c2e5c8a4f..74be3944d1 100644
  	{
  		WorkerInstrumentation *w = planstate->worker_instrument;
  
-@@ -3068,6 +3164,11 @@ show_hash_info(HashState *hashstate, ExplainState *es)
+@@ -3388,6 +3485,11 @@ show_hash_info(HashState *hashstate, ExplainState *es)
  		memcpy(&hinstrument, hashstate->hinstrument,
  			   sizeof(HashInstrumentation));
  
@@ -184,7 +194,7 @@ index 6c2e5c8a4f..74be3944d1 100644
  	/*
  	 * Merge results from workers.  In the parallel-oblivious case, the
  	 * results from all participants should be identical, except where
-@@ -3447,20 +3548,16 @@ show_instrumentation_count(const char *qlabel, int which,
+@@ -3971,20 +4073,16 @@ show_instrumentation_count(const char *qlabel, int which,
  	if (!es->analyze || !planstate->instrument)
  		return;
  
@@ -209,7 +219,7 @@ index 6c2e5c8a4f..74be3944d1 100644
  }
  
  /*
-@@ -4060,15 +4157,27 @@ show_modifytable_info(ModifyTableState *mtstate, List *ancestors,
+@@ -4666,15 +4764,27 @@ show_modifytable_info(ModifyTableState *mtstate, List *ancestors,
  			double		insert_path;
  			double		other_path;
  
@@ -221,7 +231,9 @@ index 6c2e5c8a4f..74be3944d1 100644
 -			total = outerPlanState(mtstate)->instrument->ntuples;
  			other_path = mtstate->ps.instrument->ntuples2;
 -			insert_path = total - other_path;
-
+ 
+-			ExplainPropertyFloat("Tuples Inserted", NULL,
+-								 insert_path, 0, es);
 +			/*
 +			 * Insert occurs after extracting row from subplan and in runtime mode
 +			 * we can appear between these two operations - situation when
@@ -237,21 +249,19 @@ index 6c2e5c8a4f..74be3944d1 100644
 +				ExplainPropertyFloat("Tuples Inserted", NULL, insert_path, 0, es);
 +			}
 +
--			ExplainPropertyFloat("Tuples Inserted", NULL,
--								 insert_path, 0, es);
  			ExplainPropertyFloat("Conflicting Tuples", NULL,
  								 other_path, 0, es);
  		}
-diff --git a/src/include/commands/explain.h b/src/include/commands/explain.h
-index 3d3e632a0c..3eb7bf345d 100644
---- a/src/include/commands/explain.h
-+++ b/src/include/commands/explain.h
-@@ -48,6 +48,8 @@ typedef struct ExplainState
- 	bool		settings;		/* print modified settings */
+diff --git a/src/include/commands/explain_state.h b/src/include/commands/explain_state.h
+index 32728f5d1a1..b906c1d898d 100644
+--- a/src/include/commands/explain_state.h
++++ b/src/include/commands/explain_state.h
+@@ -57,6 +57,8 @@ typedef struct ExplainState
  	bool		generic;		/* generate a generic plan */
+ 	ExplainSerializeOption serialize;	/* serialize the query's output? */
  	ExplainFormat format;		/* output format */
 +	bool		runtime;		/* print intermediate state of query execution,
-+								   not after completion */
++								 * not after completion */
  	/* state for output formatting --- not reset for each new plan tree */
  	int			indent;			/* current indentation level */
  	List	   *grouping_stack; /* format-specific grouping state */

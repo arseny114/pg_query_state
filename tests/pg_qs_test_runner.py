@@ -1,6 +1,6 @@
 '''
 pg_qs_test_runner.py
-Copyright (c) 2016-2024, Postgres Professional
+Copyright (c) 2016-2025, Postgres Professional
 '''
 
 import argparse
@@ -8,9 +8,11 @@ import getpass
 import os
 import sys
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.abspath('tmp/env'))
+
 import psycopg2
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from test_cases import *
 import tpcds
 
